@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from "express";
 import cors from "cors";
+import chalk from "chalk";
 
 const app = express();
 app.use(express.json());
@@ -8,6 +9,21 @@ app.use(cors());
 
 const porta = 5000;
 
+const usuarios = [];
+
+app.post("/participants", (req, res) => {
+    console.log(chalk.yellow("Cadastrando usuário..."));
+    const usuario = req.body;
+    console.log(chalk.green(`Usuário ${usuario.name} cadastrado!`));
+    res.status(201).send("Criado!");
+})
+
+app.get("/participants", (req, res) => {
+    console.log(chalk.yellow("Buscando usuários..."))
+
+    res.send(usuarios);
+})
+
 app.listen(porta, () => {
-    console.log(`Servidor subido na porta ${porta}`)
+    console.log(chalk.blue(`Servidor criado na porta ${porta}`))
 })
