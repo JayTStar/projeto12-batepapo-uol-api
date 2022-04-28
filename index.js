@@ -1,7 +1,9 @@
-import 'dotenv/config';
+import dotenv from"dotenv";
 import express from "express";
 import cors from "cors";
 import chalk from "chalk";
+import Joi from "joi";
+import { MongoClient } from "mongodb";
 
 const app = express();
 app.use(express.json());
