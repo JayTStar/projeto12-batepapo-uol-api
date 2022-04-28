@@ -11,7 +11,7 @@ app.use(cors());
 
 let dados;
 
-const mongoClient = new MongoClient("localhost:27017");
+const mongoClient = new MongoClient("mongodb://localhost:27017");
 
 mongoClient.connect().then( () => {
     dados = mongoClient.db("projeto-12");
@@ -24,7 +24,7 @@ const usuarios = [];
 app.post("/participants", (req, res) => {
     console.log(chalk.yellow("Cadastrando usuário..."));
     const usuario = req.body;
-    db.collection("usuarios").insertOne(usuario).then(() => {
+    dados.collection("usuarios").insertOne(usuario).then(() => {
         console.log(chalk.green(`Usuário ${usuario.name} cadastrado!`));
         res.status(201).send("Criado!");
     })
