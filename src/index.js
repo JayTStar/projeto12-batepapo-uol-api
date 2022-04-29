@@ -5,35 +5,55 @@ import chalk from "chalk";
 import Joi from "joi";
 import { MongoClient } from "mongodb";
 
+dotenv.config();
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-let dados;
-
 const mongoClient = new MongoClient("mongodb://localhost:27017");
-
-mongoClient.connect().then( () => {
-    dados = mongoClient.db("projeto-12");
-})
 
 const porta = 5000;
 
-const usuarios = [];
-
-app.post("/participants", (req, res) => {
-    console.log(chalk.yellow("Cadastrando usuário..."));
-    const usuario = req.body;
-    dados.collection("usuarios").insertOne(usuario).then(() => {
+app.post("/participants", async (req, res) => {
+    const usuario = {
+        name: req.body.name,
+        lastStatus: Date.now()
+    }
+    try{
+        console.log(chalk.yellow("Acessando banco de dados..."));
+        await mongoClient.connect();
+        const dados = mongoClient.db("projeto-12");
+        console.log(chalk.yellow("Cadastrando usuário..."));
+        await dados.collection("usuarios").insertOne(usuario);
         console.log(chalk.green(`Usuário ${usuario.name} cadastrado!`));
+
         res.status(201).send("Criado!");
-    })
+
+        console.log(chalk.yellow("Fechando conexão"));
+        mongoClient.close();
+    }
+    catch(e){
+        console.log(`Deu ruim, erro: ${e}`);
+        mongoClient.close();
+    }
 })
 
-app.get("/participants", (req, res) => {
-    console.log(chalk.yellow("Buscando usuários..."))
+app.get("/participants", async (req, res) => {
+    try{
+        console.log(chalk.yellow("Acessando banco de dados..."));
+        await mongoClient.connect();
+        const dados = mongoClient.db("projeto-12");
+        console.log(chalk.yellow("Pegando usuarios..."));
+        const collectionUsuarios = dados.collection("usuarios");
+        const usuarios = await collectionUsuarios.find({}).toArray();
 
-    res.send(usuarios);
+        res.status(200).send(usuarios)
+        mongoClient.close();
+    }
+    catch(e){
+        console.log(`Deu ruim, erro: ${e}`);
+        mongoClient.close();
+    }
 })
 
 app.listen(porta, () => {
