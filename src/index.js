@@ -11,12 +11,12 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+const mongoClient = new MongoClient("mongodb://localhost:27017");
+
+const porta = 5000;
+
 const date = new Date
-
 const hora = dayjs(date).format('HH:mm:ss');
-
-console.log(`Hoje é dia: ${date}`);
-console.log(`Hora: ${hora}`);
 
 const participantSchema = joi.object({
     name: joi.string().required(),
@@ -30,10 +30,6 @@ const messageSchema = joi.object({
     type: joi.string().required(),
     time: joi.string().required()
 })
-
-const mongoClient = new MongoClient("mongodb://localhost:27017");
-
-const porta = 5000;
 
 app.post("/participants", async (req, res) => {
     const usuario = {
@@ -63,6 +59,16 @@ app.post("/participants", async (req, res) => {
         await mongoClient.connect();
         const dados = mongoClient.db("projeto-12");
         console.log(chalk.yellow("Cadastrando usuário..."));
+
+        const procura = await dados.collection("usuarios").findOne({name: usuario.name});
+    
+        if(procura !== null){
+            console.log(chalk.red("Nome já cadastrado"));
+
+            res.status(409).send("Nome de usuário já existe")
+            return;
+        }
+
         await dados.collection("usuarios").insertOne(usuario);
         console.log(chalk.green(`Usuário ${usuario.name} cadastrado!`));
         
@@ -70,7 +76,7 @@ app.post("/participants", async (req, res) => {
 
         res.status(201).send("Criado!");
 
-        console.log(chalk.yellow("Fechando conexão"));
+        console.log(chalk.yellow("Fechando conexão..."));
         mongoClient.close();
     }
     catch(e){
