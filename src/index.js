@@ -27,7 +27,7 @@ const messageSchema = joi.object({
     from: joi.string().required(),
     to: joi.string().required(),
     text: joi.string().required(),
-    type: joi.string().required(),
+    type: joi.string().valid("message", "private_message").required(),
     time: joi.string().required()
 })
 
@@ -126,6 +126,16 @@ app.post("/messages", async (req, res) => {
         console.log(chalk.yellow("Acessando banco de dados..."));
         await mongoClient.connect();
         const dados = mongoClient.db("projeto-12");
+
+        const procura = await dados.collection("usuarios").findOne({name: mensagem.from});
+    
+        if(procura === null){
+            console.log(chalk.red("Usuário não encontrado"));
+
+            res.status(409).send("Nome de usuário não cadastrado");
+            return;
+        }
+
         console.log(chalk.yellow("Enviando mensagem"));
         await dados.collection("messages").insertOne(mensagem);
 
@@ -136,20 +146,27 @@ app.post("/messages", async (req, res) => {
     }
     catch(e){
         console.log(`Deu probleminha, n°: ${e}`);
+        res.status(422).send("Algo de errado não está certo");
     }
 
 })
 
 app.get("/messages",async (req, res) => {
+    const usuario = req.headers.user;
+
+    const numMensagens =parseInt(req.query.limit);
+
+    console.log(numMensagens);
+
     try{
         console.log(chalk.yellow("Acessando banco de dados..."));
         await mongoClient.connect();
         const dados = mongoClient.db("projeto-12");
         console.log(chalk.yellow("Pegando mensagens..."));
         const collectionMensagens = dados.collection("messages");
-        const mensagens = await collectionMensagens.find({}).toArray();
+        const mensagens = await collectionMensagens.find({$or: [{to: "Todos"}, {to: usuario}]}).toArray();
 
-        res.status(200).send(mensagens)
+        res.status(200).send((numMensagens === undefined)? mensagens : mensagens.slice((mensagens.length - numMensagens), mensagens.length));
         mongoClient.close();
     }
     catch(e){
@@ -157,6 +174,54 @@ app.get("/messages",async (req, res) => {
         mongoClient.close();
     }
 })
+
+app.post("/status", async (req, res) => {
+
+    try{
+        const usuario = req.headers.user;
+        await mongoClient.connect();
+        const dados = mongoClient.db("projeto-12");
+        const procura = await dados.collection("usuarios").findOne({name: usuario});
+
+        if(procura === null){
+            console.log(chalk.red("Usuário não encontrado"));
+
+            res.status(404).send("Nome de usuário não cadastrado");
+            return;
+        }
+
+        await dados.collection("usuarios").updateOne({name: usuario}, {$set: {lastStatus: Date.now()}})
+    }
+    catch(e){
+        console.log(`Deu probleminha, n°: ${e}`);
+        res.status(422).send("Algo de errado não está certo");
+    }
+    
+
+    res.status(200).send("Deu certo");
+})
+
+setInterval(async () => {
+    const timeStamp = new Date - 10000;
+
+    const mensagemRemocao = {
+        from: "",
+        to: "Todos",
+        text: "Sai da sala...",
+        type: "Status",
+        time: hora
+    }
+
+    try{
+        await mongoClient.connect();
+        const dados = mongoClient.db("projeto-12");
+        const collectionUsuarios = dados.collection("usuarios");
+        await collectionUsuarios.deleteMany({lastStatus: {$lt: timeStamp}}).toArray();
+    }
+    catch(e){
+
+    }
+}, 15000);
 
 app.listen(porta, () => {
     console.log(chalk.blue(`Servidor criado na porta ${porta}`))
